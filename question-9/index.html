@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Pagination System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        #searchBox {
+            margin-bottom: 20px;
+            padding: 10px;
+            width: calc(100% - 22px);
+            font-size: 16px;
+        }
+        #filterBox {
+            margin-bottom: 20px;
+            padding: 10px;
+        }
+        #dataContainer {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            background: white;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .dataItem {
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+        .dataItem:hover {
+            background-color: #e9e9e9;
+        }
+        #loadMore {
+            cursor: pointer;
+            color: blue;
+            text-align: center;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Advanced Pagination System</h1>
+    <input type="text" id="searchBox" placeholder="Search..." />
+    <div id="filterBox">
+        <label for="filterSelect">Filter:</label>
+        <select id="filterSelect">
+            <option value="">All</option>
+            <option value="Category1">Category 1</option>
+            <option value="Category2">Category 2</option>
+            <option value="Category3">Category 3</option>
+        </select>
+    </div>
+    <div id="dataContainer"></div>
+    <div id="loadMore">Load More</div>
+
+    <script>
+        let page = 1;
+        let limit = 10;
+        let isLoading = false;
+        const apiUrl = 'https://jsonplaceholder.typicode.com/posts'; // Replace with your JSON server URL
+
+        // Function to debounce the search input
+        function debounce(fn, delay) {
+            let timeout;
+            return function(...args) {
+                if (timeout) clearTimeout(timeout);
+                timeout = setTimeout(() => fn.apply(this, args), delay);
+            };
+        }
+
+        // Function to throttle load more requests
+        function throttle(fn, delay) {
+            let lastCall = 0;
+            return function(...args) {
+                const now = Date.now();
+                if (now - lastCall < delay) return;
+                lastCall = now;
+                return fn.apply(this, args);
+            };
+        }
+
+        // Fetch data from the API
+        async function fetchData(query = '', filter = '') {
+            if (isLoading) return;
+            isLoading = true;
+
+            const response = await fetch(`${apiUrl}?_page=${page}&_limit=${limit}`);
+            const data = await response.json();
+            isLoading = false;
+            return data.filter(item => {
+                return (
+                    (!query || item.title.includes(query)) &&
+                    (!filter || item.category === filter)
+                );
+            });
+        }
+
+        // Display fetched data in the container
+        function displayData(data) {
+            const dataContainer = document.getElementById('dataContainer');
+            data.forEach(item => {
+                const dataItem = document.createElement('div');
+                dataItem.className = 'dataItem';
+                dataItem.textContent = item.title;
+                dataContainer.appendChild(dataItem);
+            });
+        }
+
+        // Load more data
+        async function loadMore() {
+            const query = document.getElementById('searchBox').value;
+            const filter = document.getElementById('filterSelect').value;
+            const data = await fetchData(query, filter);
+            displayData(data);
+            page++;
+        }
+
+        // Event listener for search input with debouncing
+        document.getElementById('searchBox').addEventListener('input', debounce(async function() {
+            const dataContainer = document.getElementById('dataContainer');
+            dataContainer.innerHTML = ''; // Clear previous results
+            page = 1; // Reset page number
+            await loadMore();
+        }, 300));
+
+        // Event listener for filter change
+        document.getElementById('filterSelect').addEventListener('change', async function() {
+            const dataContainer = document.getElementById('dataContainer');
+            dataContainer.innerHTML = ''; // Clear previous results
+            page = 1; // Reset page number
+            await loadMore();
+        });
+
+        // Load initial data
+        loadMore();
+
+        // Event listener for load more button with throttling
+        document.getElementById('loadMore').addEventListener('click', throttle(loadMore, 2000));
+
+        // Infinite scrolling
+        document.getElementById('dataContainer').addEventListener('scroll', function() {
+            if (dataContainer.scrollTop + dataContainer.clientHeight >= dataContainer.scrollHeight) {
+                loadMore();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Search App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        #searchBox {
+            margin-bottom: 20px;
+        }
+        #movieList {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            background: white;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .movieItem {
+            cursor: pointer;
+            padding: 5px;
+            border-bottom: 1px solid #ccc;
+        }
+        .movieItem:hover {
+            background-color: #e9e9e9;
+        }
+        #movieDetails {
+            border: 1px solid #ccc;
+            background: white;
+            padding: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Movie Search Application</h1>
+    <input type="text" id="searchBox" placeholder="Search for a movie..." />
+    <div id="movieList"></div>
+    <div id="movieDetails"></div>
+
+    <script>
+        const apiKey = 'YOUR_OMDB_API_KEY'; // Replace with your actual API key
+        let timeout = null;
+
+        // Throttled search function
+        function throttleSearch(callback, delay) {
+            return function(...args) {
+                if (timeout) {
+                    clearTimeout(timeout);
+                }
+                timeout = setTimeout(() => {
+                    callback.apply(this, args);
+                }, delay);
+            };
+        }
+
+        // Fetch movies from the OMDB API
+        async function fetchMovies(query) {
+            if (!query) return;
+            const response = await fetch(`https://www.omdbapi.com/?s=${query}&apikey=${apiKey}`);
+            const data = await response.json();
+            displayMovies(data.Search);
+        }
+
+        // Display movie titles in a box
+        function displayMovies(movies) {
+            const movieList = document.getElementById('movieList');
+            movieList.innerHTML = ''; // Clear previous results
+            if (!movies) return;
+
+            movies.forEach(movie => {
+                const movieItem = document.createElement('div');
+                movieItem.className = 'movieItem';
+                movieItem.textContent = movie.Title;
+                movieItem.onclick = () => fetchMovieDetails(movie.imdbID);
+                movieList.appendChild(movieItem);
+            });
+        }
+
+        // Fetch and display details of a selected movie
+        async function fetchMovieDetails(imdbID) {
+            const response = await fetch(`https://www.omdbapi.com/?i=${imdbID}&apikey=${apiKey}`);
+            const data = await response.json();
+            displayMovieDetails(data);
+        }
+
+        // Display movie details
+        function displayMovieDetails(movie) {
+            const movieDetails = document.getElementById('movieDetails');
+            movieDetails.innerHTML = `
+                <h2>${movie.Title} (${movie.Year})</h2>
+                <p><strong>Director:</strong> ${movie.Director}</p>
+                <p><strong>Genre:</strong> ${movie.Genre}</p>
+                <p><strong>Plot:</strong> ${movie.Plot}</p>
+                <img src="${movie.Poster}" alt="${movie.Title} Poster" style="width:200px;">
+            `;
+            movieDetails.style.display = 'block'; // Show the movie details
+        }
+
+        // Throttled search event listener
+        document.getElementById('searchBox').addEventListener('input', throttleSearch(function() {
+            fetchMovies(this.value);
+        }, 500));
+    </script>
+</body>
+</html>
